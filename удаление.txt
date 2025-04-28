@@ -1,0 +1,22 @@
+Наведите курсор на пункт меню «Пакеты». Далее «miniShop2» и выберите «Настройки»
+Найдите «PaynetEasy» и выбрать действие «Удалить»
+Перейдите на сервер и удалите папку «mspPaynetEasy» из корневой папки сайта
+Удалите файл на сервере «payneteasy.class.php» по адресу папка_сайта/core/components/minishop2/custom/payment/
+Удалите файл на сервере «payneteasy.php» по адресу папка_сайта/assets/components/minishop2/payment/
+Удалите файл на сервере «payneteasy-setting-fields.combo.js» по адресу папка_сайта/assets/components/csf/js/mgr
+Удалите файл на сервере «msp.payneteasy.inc.php» по адресу папка_сайта/core/components/minishop2/lexicon/en
+Удалите файл на сервере «msp.payneteasy.inc.php» по адресу папка_сайта/core/components/minishop2/lexicon/ru
+Удалите архив на сервере «msppayneteasy-1.0.0-pl.transport.zip» по адресу папка_сайта/core/packages
+Удалите папку на сервере «msppayneteasy-1.0.0-pl» по адресу папка_сайта/core/packages
+
+
+Move the cursor to the menu item «Packages». Next «miniShop2» and select «Settings»
+Find «PaynetEasy» and select the «Delete» action
+Go to the server and delete the folder «mspPaynetEasy» from the root folder of the site
+Delete the file on the server «payneteasy.class.php» at site_folder/core/components/minishop2/custom/payment/
+Delete the file on the «payneteasy.php» server at the address site_folder/assets/components/minishop2/payment/
+Delete the file on the server «payneteasy-setting-fields.combo.js» at site_folder/assets/components/csf/js/mgr
+Delete the file on the server «msp.payneteasy.inc.php» at site_folder/core/components/minishop2/lexicon/en
+Delete the file on the server «msp.payneteasy.inc.php» at site_folder/core/components/minishop2/lexicon/ru
+Delete the zip file on the server «msppayneteasy-1.0.0-pl.transport.zip» at site_folder/core/packages
+Delete the folder on the server «msppayneteasy-1.0.0-pl» at site_folder/core/packages

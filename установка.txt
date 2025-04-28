@@ -1,0 +1,66 @@
+Подключитесь по FTP к серверу и поместите папку с плагином «mspPaynetEasy» в корневую папку сайта.
+В браузере перейдите по адресу https://адрес_вашего_сайта/mspPaynetEasy/_build/build.transport.php для получения информации о пакете и запуска установки плагина.
+Авторизуйтесь как «Администратор»
+Наведите курсор на пункт меню «Пакеты». Затем «miniShop2» и выберите «Настройки».
+Перейдите на вкладку «Способы оплаты».
+Для созданного способа оплаты «PaynetEasy Payment» выберите действие «Изменить».
+Перейдите на вкладку «Варианты доставки» и включите доступные опции для этой платежной системы.
+Наведите курсор на пункт меню «Пакеты». Далее «miniShop2» и выберите «Системные настройки».
+В поле поиска ключей укажите «paynet» и нажмите «Enter».
+В колонке «Значение», дважды щелкнув по нужному параметру, откроется поле ввода. Заполните все настройки плагина
+Чтобы настроить перенаправление после оформления заказа, введите id страницы для «Страницы успешной оплаты» и id страницы для «Страницы неуспешной оплаты».
+Если способ оплаты не отображается в корзине, проверьте, включен ли способ оплаты на странице настроек.
+
+
+Чтобы метод Direct сработал вам необходимо внести изменения в два файла из панели администратора.
+В левом меню перейдите на вкладку «Чанки» и выберите «tpl.msOrder»
+В текстовом блоке «Код чанка (HTML):» найдите блок с ID = «payments»
+Скопируйте и вставьте следующий блок после блока с классом «checkbox»
+{if $payment.class == 'PaynetEasy' && $payment.payment_method == 'direct'}
+<div class="paynet_card_form">
+<div>
+<label for="credit_card_number">Card Number</label>
+<input id="credit_card_number" name="credit_card_number" type="text" autocomplete="cc-number">
+</div>
+<div>
+<label for="card_printed_name">Printed name</label>
+<input id="card_printed_name" name="card_printed_name" type="text" autocomplete="cc-name" placeholder="Printed name">
+</div>
+<div>
+<label for="expire_month">Expiry month</label>
+<input minlength="2" maxlength="2" name="expire_month" id="expire_month" type="text" autocomplete="off" placeholder="MM" style="max-width: 15%">
+<label for="expire_year">Expiry year</label>
+<input minlength="4" maxlength="4" name="expire_year" id="expire_year" type="text" autocomplete="off" placeholder="YYYY" style="max-width: 15%">
+</div>
+<div>
+<label for="cvv2">CVC</label>
+<input minlength="3" maxlength="4" name="cvv2" id="cvv2" autocomplete="cc-csc" type="password" style="max-width: 15%">
+</div>
+</div>
+{/if}
+Нажмите кнопку «Сохранить»
+В левом меню перейдите на вкладку «Сниппеты» и выберите «msOrder»
+В текстовом блоке «Код сниппета (PHP):» найдите с помощью поиска по веб странице следующий код
+$payment[substr($key, 8)] = $value;
+и после него вставьте данный код
+if ($payment['class'] == 'PaynetEasy') {
+$sql = "SELECT value FROM modx_system_settings WHERE xtype = 'payneteasy_payment_method'";
+$statement = $modx->prepare($sql);
+        if ($statement->execute())
+            $payment_method = $statement->fetchAll(PDO::FETCH_ASSOC);
+$payment['payment_method'] = $payment_method[0]['value'];
+}
+Нажмите кнопку «Сохранить»
+
+Connect via FTP to the server and place the folder with the plugin “mspPaynetEasy” in the root folder of the site
+In your browser, type https://website/mspPaynetEasy/_build/build.transport.php for package information and starting install plugin.
+Authorize as “Administrator”
+Hover your cursor over the “Packages” menu item. Then “miniShop2” and select “Settings”.
+Go to the “Payment Methods” tab
+For the created payment method “PaynetEasy Payment” select the action “Change”.
+Go to the “Delivery options” tab and enable the available options for this payment system.
+Hover over the “Packages” menu item. Next “miniShop2” and select “System Settings”.
+In the key search field, specify “paynet” and press “Enter”
+In the “Value” column, clicking twice on the desired parameter will open the input field. Fill in all plugin settings
+To configure redirection after checkout, enter page id for “Successful payment page” and page id for “Unsuccessful payment page”
+If the payment method does not appear in the cart, check if the payment method is enabled on the settings page.
