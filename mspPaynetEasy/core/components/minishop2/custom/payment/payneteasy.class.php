@@ -103,7 +103,8 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
                 elseif ($this->config['payment_method'] == 'direct') {
                     if ($this->config['three_d_secure']) {
                         return $this->success('', [
-                            'redirect' => '/mspPaynetEasy/direct.php?orderId='.$this->order->get('id'),
+                            'redirect' => '/mspPaynetEasy/direct.php?orderId='.$this->order->get('id')
+                                . '&token=' . $this->directPageToken($this->order->get('id')),
                             'msorder' => $this->order->get('id')
                         ]);
                     }
@@ -867,6 +868,15 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $base .= $data['email'];
 
         return $this->signString($base, $merchantControl);
+    }
+
+
+    /**
+     * Token that binds the 3-D Secure page link to the order.
+     */
+    public function directPageToken($orderId): string
+    {
+        return hash_hmac('sha256', 'direct:' . (int) $orderId, (string) $this->config['control_key']);
     }
 
 
