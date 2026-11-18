@@ -61,6 +61,11 @@ $tmp = [
         'xtype' => 'payneteasy_default_country',
         'area' => 'ms2_payment',
     ],
+    'currency' => [
+        'value' => 'EUR',
+        'xtype' => 'textfield',
+        'area' => 'ms2_payment',
+    ],
     'success_id' => [
         'xtype' => 'numberfield',
         'value' => 0,

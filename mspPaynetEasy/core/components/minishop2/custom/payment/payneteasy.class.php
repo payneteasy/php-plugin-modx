@@ -47,6 +47,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
             'logging',
             'three_d_secure',
             'default_country',
+            'currency',
             'success_id',
             'failure_id'
         ];
@@ -451,7 +452,9 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
             'client_orderid' => (string)$this->order->get('id'),
             'order_desc' => 'Order # ' . $this->order->get('id'),
             'amount' => $cost,
-            'currency' => $this->modx->lexicon('ms2_frontend_currency')?:'eur',
+            // ISO 4217 code from the plugin settings. The miniShop2 lexicon holds a
+            // display label (e.g. "руб."), or its key when the lexicon is not loaded.
+            'currency' => strtoupper($this->config['currency'] ?: 'EUR'),
             'address1' => $customerAddress1?:$profile->get('address'),
             'city' => $customerCity,
             'zip_code' => $customerZip,

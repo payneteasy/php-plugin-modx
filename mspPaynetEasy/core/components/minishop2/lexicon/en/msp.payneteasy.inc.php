@@ -10,6 +10,7 @@ $_lang['setting_ms2_payment_payneteasy_sandbox'] = 'Sandbox (PaynetEasy Payment)
 $_lang['setting_ms2_payment_payneteasy_logging'] = 'Logging (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_three_d_secure'] = '3D Secure (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_default_country'] = 'Default Country (PaynetEasy Payment)';
+$_lang['setting_ms2_payment_payneteasy_currency'] = 'Currency, ISO 4217 code (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_success_id'] = 'Successful page id (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_failure_id'] = 'Failure page id (PaynetEasy Payment)';
 

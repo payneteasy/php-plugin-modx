@@ -10,6 +10,7 @@ $_lang['setting_ms2_payment_payneteasy_sandbox'] = 'Sandbox (PaynetEasy Payment)
 $_lang['setting_ms2_payment_payneteasy_logging'] = 'Logging (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_three_d_secure'] = '3D Secure (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_default_country'] = 'Default Country (PaynetEasy Payment)';
+$_lang['setting_ms2_payment_payneteasy_currency'] = 'Валюта, код ISO 4217 (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_success_id'] = 'Страница успешной оплаты (PaynetEasy Payment)';
 $_lang['setting_ms2_payment_payneteasy_failure_id'] = 'Страница неуспешной оплаты (PaynetEasy Payment)';
 
