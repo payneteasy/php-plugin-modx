@@ -30,7 +30,7 @@ $handler = new PaynetEasy($modx->newObject(msPayment::class));
 
 // Получаем orderId и логируем данные запроса
 $orderId = '';
-$mode = $_REQUEST['mode'];
+$mode = $_REQUEST['mode'] ?? '';
 // Logging request data
 if (in_array($mode, ['return', 'webhook'])) {
     $handler->logger->setOption('additionalCommonText', $mode . '-' . rand(1111, 9999));
@@ -40,7 +40,10 @@ if (in_array($mode, ['return', 'webhook'])) {
         ['request_data' => $requestData]
     );
 
-    $orderId = $_REQUEST['client_orderid']??$requestData['client_orderid'];
+    $orderId = (string) ($_REQUEST['client_orderid'] ?? $requestData['client_orderid'] ?? '');
+    if (!ctype_digit($orderId)) {
+        $orderId = '';
+    }
 }
 
 try {
@@ -59,6 +62,12 @@ try {
     // If order exists
     if (empty($order)) {
         // Log the error if order could not be retrieved
+        throw new \Exception('Order not found.');
+    }
+
+    // Only orders paid with this payment method
+    $payment = $order->getOne('Payment');
+    if (empty($payment) || $payment->get('class') !== 'PaynetEasy') {
         throw new \Exception('Order not found.');
     }
 
@@ -96,6 +105,9 @@ try {
         $orderId ?: ''
     ));
 
-    if ($mode === 'webhook') die('error');
-    die($e->getMessage() . ' <a href="/">Go Home</a>');
+    if ($mode === 'webhook') {
+        http_response_code(400);
+        die('error');
+    }
+    die(htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . ' <a href="/">Go Home</a>');
 }

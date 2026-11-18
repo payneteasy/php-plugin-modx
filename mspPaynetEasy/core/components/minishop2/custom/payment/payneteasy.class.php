@@ -627,10 +627,8 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
                 $this->order->get('id') ?: ''
             ), $context);
 
-            $status = $context['order_status'] ?? $this->modx->getOption('ms2_status_canceled', null, 4) ?: 4;
-
-            // Set status "cancelled"
-            $this->ms2->changeOrderStatus($this->order->get('id'), $status);
+            // An error (network, gateway, unknown status) says nothing about the
+            // payment: leave the order status unchanged.
         }
 
         return false;
@@ -695,8 +693,22 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
      */
     private function changePaymentStatus(string $paymentStatus): void
     {
-        $currentOrderStatus = $this->order->get('status');
+        $currentOrderStatus = (int) $this->order->get('status');
         $paidStatus = (int) $this->modx->getOption('ms2_status_paid', null, 2) ?: 2;
+        $canceledStatus = (int) $this->modx->getOption('ms2_status_canceled', null, 4) ?: 4;
+
+        // A paid order is changed only by a refund.
+        if ($currentOrderStatus === $paidStatus && !in_array($paymentStatus, ['approved', 'refunded'], true)) {
+            return;
+        }
+
+        // Declined payment: cancel the order.
+        if (in_array($paymentStatus, ['declined', 'error', 'filtered'], true)) {
+            if ($currentOrderStatus !== $canceledStatus) {
+                $this->ms2->changeOrderStatus($this->order->get('id'), $canceledStatus);
+            }
+            return;
+        }
         $availableStatuses = [
             'approved' => [
                 'order_status' => $paidStatus
@@ -712,7 +724,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $orderStatusData = $availableStatuses[$paymentStatus] ?? [];
 
         if (!empty($orderStatusData)) {
-            if ($currentOrderStatus !== $orderStatusData['order_status']) {
+            if ($currentOrderStatus !== (int) $orderStatusData['order_status']) {
                 $this->ms2->changeOrderStatus(
                     $this->order->get('id'),
                     $orderStatusData['order_status']
