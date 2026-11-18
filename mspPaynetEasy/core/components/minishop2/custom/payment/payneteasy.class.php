@@ -47,6 +47,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
             'logging',
             'three_d_secure',
             'default_country',
+            'currency',
             'success_id',
             'failure_id'
         ];
@@ -103,7 +104,8 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
                 elseif ($this->config['payment_method'] == 'direct') {
                     if ($this->config['three_d_secure']) {
                         return $this->success('', [
-                            'redirect' => '/mspPaynetEasy/direct.php?orderId='.$this->order->get('id'),
+                            'redirect' => '/mspPaynetEasy/direct.php?orderId='.$this->order->get('id')
+                                . '&token=' . $this->directPageToken($this->order->get('id')),
                             'msorder' => $this->order->get('id')
                         ]);
                     }
@@ -450,7 +452,9 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
             'client_orderid' => (string)$this->order->get('id'),
             'order_desc' => 'Order # ' . $this->order->get('id'),
             'amount' => $cost,
-            'currency' => $this->modx->lexicon('ms2_frontend_currency')?:'eur',
+            // ISO 4217 code from the plugin settings. The miniShop2 lexicon holds a
+            // display label (e.g. "руб."), or its key when the lexicon is not loaded.
+            'currency' => strtoupper($this->config['currency'] ?: 'EUR'),
             'address1' => $customerAddress1?:$profile->get('address'),
             'city' => $customerCity,
             'zip_code' => $customerZip,
@@ -627,10 +631,8 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
                 $this->order->get('id') ?: ''
             ), $context);
 
-            $status = $context['order_status'] ?? $this->modx->getOption('ms2_status_canceled', null, 4) ?: 4;
-
-            // Set status "cancelled"
-            $this->ms2->changeOrderStatus($this->order->get('id'), $status);
+            // An error (network, gateway, unknown status) says nothing about the
+            // payment: leave the order status unchanged.
         }
 
         return false;
@@ -695,8 +697,22 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
      */
     private function changePaymentStatus(string $paymentStatus): void
     {
-        $currentOrderStatus = $this->order->get('status');
+        $currentOrderStatus = (int) $this->order->get('status');
         $paidStatus = (int) $this->modx->getOption('ms2_status_paid', null, 2) ?: 2;
+        $canceledStatus = (int) $this->modx->getOption('ms2_status_canceled', null, 4) ?: 4;
+
+        // A paid order is changed only by a refund.
+        if ($currentOrderStatus === $paidStatus && !in_array($paymentStatus, ['approved', 'refunded'], true)) {
+            return;
+        }
+
+        // Declined payment: cancel the order.
+        if (in_array($paymentStatus, ['declined', 'error', 'filtered'], true)) {
+            if ($currentOrderStatus !== $canceledStatus) {
+                $this->ms2->changeOrderStatus($this->order->get('id'), $canceledStatus);
+            }
+            return;
+        }
         $availableStatuses = [
             'approved' => [
                 'order_status' => $paidStatus
@@ -712,7 +728,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $orderStatusData = $availableStatuses[$paymentStatus] ?? [];
 
         if (!empty($orderStatusData)) {
-            if ($currentOrderStatus !== $orderStatusData['order_status']) {
+            if ($currentOrderStatus !== (int) $orderStatusData['order_status']) {
                 $this->ms2->changeOrderStatus(
                     $this->order->get('id'),
                     $orderStatusData['order_status']
@@ -855,6 +871,15 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $base .= $data['email'];
 
         return $this->signString($base, $merchantControl);
+    }
+
+
+    /**
+     * Token that binds the 3-D Secure page link to the order.
+     */
+    public function directPageToken($orderId): string
+    {
+        return hash_hmac('sha256', 'direct:' . (int) $orderId, (string) $this->config['control_key']);
     }
 
 

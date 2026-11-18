@@ -1,27 +1,31 @@
 <?php
 
-require_once(realpath($_SERVER["DOCUMENT_ROOT"]) .'/core/components/minishop2/custom/payment/payneteasy.class.php');
-require_once realpath($_SERVER["DOCUMENT_ROOT"]).'/config.core.php';
-require_once realpath($_SERVER["DOCUMENT_ROOT"]).'/core/model/modx/modx.class.php';
-require_once realpath($_SERVER["DOCUMENT_ROOT"]).'/core/xpdo/xpdo.class.php';
-require_once realpath($_SERVER["DOCUMENT_ROOT"]).'/core/xpdo/om/xpdoobject.class.php';
+// Shows the 3-D Secure page of a direct payment. Runs inside MODX and only
+// for the order the signed link was issued for.
+const MODX_API_MODE = true;
 
-use \Payneteasy\Classes\Api\PaynetApi,
-    \Payneteasy\Classes\Common\PaynetEasyLogger,
-    \Payneteasy\Classes\Exception\PaynetEasyException;
+require dirname(__DIR__) . '/index.php';
 
-$dsn = 'mysql:host=localhost;dbname=;port=3306;charset=utf-8';
-$xpdo = new xPDO($dsn, $username= '', $password= '', $options= array(), $driverOptions= null);
-$xpdoobject = new xPDOObject($xpdo);
-$modx = new modX;
-$config = $modx->getConfig();
-$PaynetEasy = new PaynetEasy($xpdoobject,$config);
+/** @var modX $modx */
+$modx->getService('error', 'error.modError');
+$miniShop2 = $modx->getService('minishop2');
+$miniShop2->loadCustomClasses('payment');
 
+$orderId = (string) ($_GET['orderId'] ?? '');
+$token = (string) ($_GET['token'] ?? '');
 
-$orderId = $_GET['orderId'];
-$paymentStatus = $PaynetEasy->getPaymentStatus($orderId);
+$handler = new PaynetEasy($modx->newObject(msPayment::class));
 
-if (isset($paymentStatus['html']))
-echo $paymentStatus['html'];
-else
-    echo $paymentStatus['error-message'];
+if (!ctype_digit($orderId) || !hash_equals($handler->directPageToken($orderId), $token)) {
+    http_response_code(404);
+    exit;
+}
+
+$paymentStatus = $handler->getPaymentStatus($orderId);
+
+// The 3-D Secure form comes from the gateway as HTML.
+if (isset($paymentStatus['html'])) {
+    echo $paymentStatus['html'];
+} else {
+    echo htmlspecialchars($paymentStatus['error-message'] ?? 'Payment error', ENT_QUOTES, 'UTF-8');
+}
