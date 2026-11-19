@@ -517,6 +517,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
             'response' => $response
         ]);
 
+        $this->ensurePaymentsTable();
         $sql = "INSERT INTO payneteasy_payments (paynet_order_id, merchant_order_id) VALUES (:paynet_order_id, :merchant_order_id)";
         $this->modx->prepare($sql)->execute(['paynet_order_id' => $response['paynet-order-id'], 'merchant_order_id' => $response['merchant-order-id']]);
 
@@ -534,6 +535,19 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
      * @param mixed|null $default The default value to return if the property doesn't exist.
      * @return mixed|null The property value if found, else the default value.
      */
+    /**
+     * Gateway ids do not fit into int: widen the column of tables created by older versions.
+     */
+    private function ensurePaymentsTable(): void
+    {
+        $stmt = $this->modx->query("SHOW COLUMNS FROM payneteasy_payments LIKE 'paynet_order_id'");
+        $column = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+        if ($column && stripos($column['Type'], 'bigint') !== 0) {
+            $this->modx->exec("ALTER TABLE payneteasy_payments MODIFY paynet_order_id bigint unsigned NOT NULL");
+        }
+    }
+
+
     private function getOrderProperty(msOrder $order, $name, $default = null)
     {
         $props = $order->get('properties');
