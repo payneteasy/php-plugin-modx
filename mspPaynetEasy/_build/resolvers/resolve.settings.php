@@ -10,8 +10,10 @@ if ($object->xpdo) {
         case xPDOTransport::ACTION_INSTALL:
         case xPDOTransport::ACTION_UPGRADE:
 
-            $sql = "CREATE TABLE payneteasy_payments (paynet_order_id int NOT NULL, merchant_order_id int NOT NULL)";
+            $sql = "CREATE TABLE IF NOT EXISTS payneteasy_payments (paynet_order_id bigint unsigned NOT NULL, merchant_order_id int NOT NULL)";
             $modx->query($sql);
+            // Gateway ids do not fit into int: widen the column of tables created by older versions
+            $modx->query("ALTER TABLE payneteasy_payments MODIFY paynet_order_id bigint unsigned NOT NULL");
 
             $payment = $modx->getObject(msPayment::class, ['class' => 'PaynetEasy']);
 
