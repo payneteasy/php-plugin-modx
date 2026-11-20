@@ -1,6 +1,7 @@
 Подключитесь по FTP к серверу и поместите папку с плагином «mspPaynetEasy» в корневую папку сайта.
-В браузере перейдите по адресу https://адрес_вашего_сайта/mspPaynetEasy/_build/build.transport.php для получения информации о пакете и запуска установки плагина.
-Авторизуйтесь как «Администратор»
+Войдите в менеджер MODX как «Администратор».
+В том же браузере откройте https://адрес_вашего_сайта/mspPaynetEasy/_build/build.transport.php и нажмите «Install».
+После установки удалите с сервера папку «mspPaynetEasy/_build».
 Наведите курсор на пункт меню «Пакеты». Затем «miniShop2» и выберите «Настройки».
 Перейдите на вкладку «Способы оплаты».
 Для созданного способа оплаты «PaynetEasy Payment» выберите действие «Изменить».
@@ -53,8 +54,9 @@ $payment['payment_method'] = $payment_method[0]['value'];
 Нажмите кнопку «Сохранить»
 
 Connect via FTP to the server and place the folder with the plugin “mspPaynetEasy” in the root folder of the site
-In your browser, type https://website/mspPaynetEasy/_build/build.transport.php for package information and starting install plugin.
-Authorize as “Administrator”
+Sign in to the MODX manager as “Administrator”
+In the same browser, open https://website/mspPaynetEasy/_build/build.transport.php and press “Install”
+After the installation delete the folder “mspPaynetEasy/_build” from the server
 Hover your cursor over the “Packages” menu item. Then “miniShop2” and select “Settings”.
 Go to the “Payment Methods” tab
 For the created payment method “PaynetEasy Payment” select the action “Change”.

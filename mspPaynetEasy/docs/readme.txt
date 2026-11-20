@@ -6,8 +6,9 @@ paynet / mspPaynetEasy
 
 INSTALL
 Connect via FTP to the server and place the folder “mspPaynetEasy” with the plugin in the root folder of the site
-In your browser, type https://website.com/mspPaynetEasy/_build/build.transport.php for package information and starting install plugin.
-Authorize as “Administrator”
+Sign in to the MODX manager as “Administrator”
+In the same browser, open https://website.com/mspPaynetEasy/_build/build.transport.php and press “Install”
+After the installation delete the folder “mspPaynetEasy/_build” from the server
 Hover your cursor over the “Packages” menu item. Then “miniShop2” and select “Settings”.
 Go to the “Payment Methods” tab
 For the created payment method “PaynetEasy Payment” select the action “Change”.
