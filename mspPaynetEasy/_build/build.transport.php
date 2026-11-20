@@ -37,6 +37,24 @@ require_once MODX_CORE_PATH . 'model/modx/modx.class.php';
 
 $modx = new modX();
 $modx->initialize('mgr');
+
+// Only a signed-in manager with the right to install packages may run the installer,
+// and only by confirming it (POST with the manager token), not by opening a link.
+if (!$modx->user || !$modx->user->hasSessionContext('mgr') || !$modx->hasPermission('packages')) {
+    http_response_code(403);
+    exit('Sign in to the MODX manager as an administrator, then open this page again.');
+}
+$token = (string) $modx->user->getUserToken('mgr');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || $token === '' || !hash_equals($token, (string) ($_POST['token'] ?? ''))) {
+    $t = htmlspecialchars($token, ENT_QUOTES, 'UTF-8');
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' . PKG_NAME . ' ' . PKG_VERSION . '</title></head><body>'
+        . '<h1>' . PKG_NAME . ' ' . PKG_VERSION . '</h1>'
+        . '<form method="post"><input type="hidden" name="token" value="' . $t . '">'
+        . '<button type="submit">Install</button> '
+        . '<label><input type="checkbox" name="download" value="1"> download the package after install</label>'
+        . '</form></body></html>';
+    exit;
+}
 $modx->setLogLevel(modX::LOG_LEVEL_INFO);
 $modx->setLogTarget('ECHO');
 
@@ -242,7 +260,51 @@ if ($event) {
 
 $modx->log(modX::LOG_LEVEL_INFO, 'End adding a plug-in.');
 
-if (!empty($_GET['download'])) {
+// Card fields of the direct payment form must not be kept in the miniShop2 order
+// storage (session, usually stored in the database). The payment handler reads them
+// from the order submit request.
+$cardPluginName = 'PaynetEasyCardFields';
+if ($existingPlugin = $modx->getObject('modPlugin', ['name' => $cardPluginName])) {
+    $existingPlugin->remove();
+}
+$cardPlugin = $modx->newObject('modPlugin');
+$cardPlugin->set('name', $cardPluginName);
+$cardPlugin->set('description', 'PaynetEasy: keeps card data out of the order storage');
+$cardPlugin->set('plugincode', '
+    $cardFields = ["credit_card_number", "card_printed_name", "expire_month", "expire_year", "cvv2"];
+    switch ($modx->event->name) {
+        case "msOnBeforeAddToOrder":
+            if (in_array($key, $cardFields, true)) {
+                $modx->event->returnedValues["value"] = "";
+            }
+            break;
+        case "msOnSubmitOrder":
+            if (is_array($data)) {
+                foreach ($cardFields as $field) {
+                    unset($data[$field]);
+                }
+                $modx->event->returnedValues["data"] = $data;
+            }
+            break;
+    }
+');
+$cardPlugin->set('disabled', 0);
+if ($cardPlugin->save()) {
+    foreach (['msOnBeforeAddToOrder', 'msOnSubmitOrder'] as $cardEvent) {
+        $pluginEvent = $modx->newObject('modPluginEvent');
+        $pluginEvent->set('pluginid', $cardPlugin->get('id'));
+        $pluginEvent->set('event', $cardEvent);
+        $pluginEvent->save();
+    }
+    $modx->log(modX::LOG_LEVEL_INFO, "Plugin '{$cardPluginName}' added.");
+} else {
+    $modx->log(modX::LOG_LEVEL_ERROR, "Could not save plugin: " . print_r($cardPlugin->getErrors(), true));
+}
+
+// New plugins take effect only after the cache is refreshed
+$modx->cacheManager->refresh();
+
+if (!empty($_POST['download'])) {
     echo '<script>document.location.href = "/core/packages/' . $signature . '.transport.zip' . '";</script>';
 }
 
