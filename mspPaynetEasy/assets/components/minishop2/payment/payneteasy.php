@@ -28,7 +28,7 @@ $miniShop2->loadCustomClasses('payment');
  */
 $handler = new PaynetEasy($modx->newObject(msPayment::class));
 
-// Получаем orderId и логируем данные запроса
+// Get orderId and log the request data
 $orderId = '';
 $mode = $_REQUEST['mode'] ?? '';
 // Logging request data
@@ -73,8 +73,8 @@ try {
 
     $receive = $handler->receive($order);
 
-    // Если запрос имеет тип webhook, то не требуется редирект,
-    // поэтому останавливаем выполнение
+    // A webhook request needs no redirect,
+    // so stop here
     if ($mode === 'webhook') die($receive ? 'ok' : 'error');
 
     // Set parameters and context
