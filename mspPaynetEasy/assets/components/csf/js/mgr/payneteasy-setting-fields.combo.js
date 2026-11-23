@@ -1,4 +1,4 @@
-// Общая функция для создания ComboBox
+// Shared function that creates a ComboBox
 let createComboBox = function(name, hiddenName, data) {
     let ComboBoxConstructor = function(config) {
         config = config || {};

@@ -400,9 +400,9 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
 
     /**
-     * Получает URL-адрес платежа для перенаправления.
+     * Gets the payment URL for the redirect.
      *
-     * @return string URL-адрес платежа.
+     * @return string Payment URL.
      */
     private function getPayUrl(): array
     {
@@ -653,7 +653,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
     }
 
     /**
-     * Получение статуса заказа из PAYNETEASY API.
+     * Gets the order status from the PAYNETEASY API.
      *
      */
     public function getPaymentStatus($id_order): array
@@ -703,9 +703,9 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
 
     /**
-     * Устанавливаем статус заказа
+     * Sets the order status
      *
-     * @param string $paymentStatus Статус оплаты.
+     * @param string $paymentStatus Payment status.
      *
      * @return void
      */
@@ -756,8 +756,8 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
 
     /**
-     * Отправляем запрос на возврат в PAYNETEASY, возвращвем результат запроса и логируем входящие и выходящие данные.
-     * Если запрос прошёл успешно, то и в CMS отображаем информацию о возврате.
+     * Sends a refund request to PAYNETEASY, returns the result and logs the request and response data.
+     * If the request succeeds, the refund is also shown in the CMS.
      *
      * @return array
      */
@@ -826,9 +826,9 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
 
     /**
-     * Инициализация и настройка объекта класса PaynetEasyLogger.
+     * Creates and configures the PaynetEasyLogger object.
      *
-     * Эта функция инициализирует и настраивает логгер, используемый плагином PaynetEasy для ведения журнала.
+     * This function sets up the logger the PaynetEasy plugin writes its log with.
      *
      * @return void
      */

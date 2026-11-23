@@ -215,14 +215,14 @@ if (defined('PKG_AUTO_INSTALL') && PKG_AUTO_INSTALL) {
 }
 
 $modx->log(modX::LOG_LEVEL_INFO, 'Start adding a plug-in.');
-// Создание плагина
-$pluginName = 'PaynetEasySettingFields.php'; // Название вашего плагина
-$eventName = 'OnManagerPageBeforeRender'; // Событие, при котором будет вызван ваш плагин
+// Create the plugin
+$pluginName = 'PaynetEasySettingFields.php'; // Plugin name
+$eventName = 'OnManagerPageBeforeRender'; // Event that runs the plugin
 
-// Проверяем, существует ли плагин с таким именем
+// Check whether a plugin with this name exists
 $existingPlugin = $modx->getObject('modPlugin', ['name' => $pluginName]);
 if ($existingPlugin) {
-    // Удаляем существующий плагин
+    // Remove the existing plugin
     $existingPlugin->remove();
     $modx->log(modX::LOG_LEVEL_INFO, "Existing plugin '{$pluginName}' has been removed.");
 }
@@ -244,12 +244,12 @@ $plugin->set('plugincode', '
     $modx->controller->addLastJavascript($pathPrefix . "payneteasy-setting-fields.combo.js");
 ');
 $plugin->set('disabled', 0);
-// Сохранение плагина
+// Save the plugin
 if (!$plugin->save()) {
     $modx->log(modX::LOG_LEVEL_ERROR, "Could not save plugin: " . print_r($plugin->getErrors(), true));
 }
 
-// Привязка плагина к системному событию
+// Bind the plugin to the system event
 $event = $modx->getObject('modEvent', ['name' => $eventName]);
 if ($event) {
     $pluginEvent = $modx->newObject('modPluginEvent');

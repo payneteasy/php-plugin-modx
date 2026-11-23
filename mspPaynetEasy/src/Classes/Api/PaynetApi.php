@@ -6,7 +6,7 @@ use \Payneteasy\Classes\Common\Request,
     \Payneteasy\Classes\Exception\PaynetEasyException;
 
 /**
- * Класс PaynetApi предоставляет методы для взаимодействия с API PAYNETEASY.
+ * The PaynetApi class provides methods for the PAYNETEASY API.
  */
 class PaynetApi extends Request
 {
