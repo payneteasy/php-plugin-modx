@@ -4,7 +4,7 @@
 const PKG_NAME = 'mspPaynetEasy';
 define('PKG_NAME_LOWER', strtolower(PKG_NAME));
 
-const PKG_VERSION = '1.1.2';
+const PKG_VERSION = '1.1.3';
 const PKG_RELEASE = 'pl';
 const PKG_AUTO_INSTALL = true;
 

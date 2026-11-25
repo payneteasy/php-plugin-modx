@@ -93,7 +93,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
             $paymentStatus = $this->getPaymentStatus($this->order->get('id'));
 
-            if (trim($paymentStatus['status']) == 'processing') {
+            if (trim($paymentStatus['status'] ?? '') == 'processing') {
                 if ($this->config['payment_method'] == 'form') {
                     $this->setOrderProperty('payment_link', $payUrl['redirect-url']);
                     return $this->success('', [
@@ -111,6 +111,14 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
                     }
                 }
             }
+
+            // Any other outcome (approved or declined at once, direct payment
+            // without 3-D Secure): the return page reads the status from the
+            // gateway, updates the order and shows the result
+            return $this->success('', [
+                'redirect' => $returnUrl . '&client_orderid=' . (int) $this->order->get('id'),
+                'msorder' => $this->order->get('id')
+            ]);
         } catch (\Exception | PaynetEasyException $e) {
             // Handle exception and log error
             $context = [
@@ -419,7 +427,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $customerCity = $profile->get('city')?:$contacts->city;
         $customerZip = $profile->get('zip')?:$contacts->index;
         $customerCountry = $contacts->country??$profile->get('country');
-        $cost = str_replace(',', '.', $this->order->get('cost'));
+        $cost = $this->getOrderAmount();
 
         $countries = $this->getCountries();
 
@@ -517,6 +525,11 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
             'response' => $response
         ]);
 
+        // A refused sale has no payment id: nothing to pay and nothing to track
+        if (empty($response['paynet-order-id'])) {
+            throw new \Exception($this->modx->lexicon('ms2_payment_payneteasy_url_fetch_error'));
+        }
+
         $this->ensurePaymentsTable();
         $sql = "INSERT INTO payneteasy_payments (paynet_order_id, merchant_order_id) VALUES (:paynet_order_id, :merchant_order_id)";
         $this->modx->prepare($sql)->execute(['paynet_order_id' => $response['paynet-order-id'], 'merchant_order_id' => $response['merchant-order-id']]);
@@ -545,6 +558,37 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         if ($column && stripos($column['Type'], 'bigint') !== 0) {
             $this->modx->exec("ALTER TABLE payneteasy_payments MODIFY paynet_order_id bigint unsigned NOT NULL");
         }
+
+        // The attempts of an order are read in the order they were made
+        $stmt = $this->modx->query("SHOW COLUMNS FROM payneteasy_payments LIKE 'id'");
+        if ($stmt && !$stmt->fetch(PDO::FETCH_ASSOC)) {
+            $this->modx->exec("ALTER TABLE payneteasy_payments ADD id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY");
+        }
+    }
+
+    /**
+     * Order total as it is sent to the gateway: two decimals, dot separator.
+     */
+    private function getOrderAmount(): string
+    {
+        return number_format((float) str_replace(',', '.', (string) $this->order->get('cost')), 2, '.', '');
+    }
+
+    /**
+     * True, if the approved payment has the amount and the currency of the order.
+     * The order may have been changed after the payment was started.
+     */
+    private function isPaidInFull(array $paymentStatus): bool
+    {
+        $amount   = trim((string) ($paymentStatus['amount'] ?? ''));
+        $currency = trim((string) ($paymentStatus['currency'] ?? ''));
+
+        if (!preg_match('/^\d+(\.\d{1,2})?$/', $amount)) {
+            return false;
+        }
+
+        return strcasecmp($currency, (string) ($this->config['currency'] ?: 'EUR')) === 0
+            && (int) round((float) $amount * 100) === (int) round((float) $this->getOrderAmount() * 100);
     }
 
 
@@ -626,9 +670,20 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
         try {
             $paymentStatus = $this->getPaymentStatus($this->order->get('id'));
-            $this->changePaymentStatus(trim($paymentStatus['status']));
+            $status = trim((string) ($paymentStatus['status'] ?? ''));
 
-            if (trim($paymentStatus['status']) == 'approved') return true;
+            if ($status === 'approved' && !$this->isPaidInFull($paymentStatus)) {
+                $paidStatus = (int) $this->modx->getOption('ms2_status_paid', null, 2) ?: 2;
+
+                // An already paid order stays paid; an unpaid one is not marked paid
+                if ((int) $this->order->get('status') === $paidStatus) return true;
+
+                throw new \Exception('The approved payment does not match the order amount or currency');
+            }
+
+            $this->changePaymentStatus($status);
+
+            if ($status === 'approved') return true;
 
         } catch (\Exception | PaynetEasyException $e) {
             // Handle exception and log error
@@ -658,11 +713,19 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
      */
     public function getPaymentStatus($id_order): array
     {
-        $modx = new modX;
-        $sql = "SELECT paynet_order_id FROM payneteasy_payments WHERE merchant_order_id = :merchant_order_id";
+        $modx = $this->modx;
+        $this->ensurePaymentsTable();
+
+        // The last payment attempt of the order
+        $paynet_order_id = [];
+        $sql = "SELECT paynet_order_id FROM payneteasy_payments WHERE merchant_order_id = :merchant_order_id ORDER BY id DESC LIMIT 1";
         $statement = $modx->prepare($sql);
         if ($statement->execute(['merchant_order_id' => $id_order]))
             $paynet_order_id = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($paynet_order_id[0]['paynet_order_id'])) {
+            throw new \Exception('No payment was started for the order');
+        }
 
         // Logging input
         $this->logger->debug(
@@ -881,7 +944,7 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $base = '';
         $base .= $endpointId;
         $base .= $data['client_orderid'];
-        $base .= $data['amount'] * 100;
+        $base .= (int) round((float) $data['amount'] * 100);
         $base .= $data['email'];
 
         return $this->signString($base, $merchantControl);
