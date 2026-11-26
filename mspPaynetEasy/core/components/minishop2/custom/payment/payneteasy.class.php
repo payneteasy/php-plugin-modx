@@ -59,6 +59,126 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
         $this->config = array_merge($resultConfig, $config);
 
         $this->setPayneteasyLogger();
+
+        $this->ensureCardFieldsPlugin();
+    }
+
+
+    /**
+     * Card fields of the direct payment form must not be kept in the miniShop2
+     * order storage (session, usually stored in the database). The plugin that
+     * keeps them out is created by the installer; a shop that was updated by
+     * copying the files gets the same plugin here.
+     *
+     * @param string $name Plugin name.
+     */
+    private function ensureCardFieldsPlugin(string $name = 'PaynetEasyCardFields'): void
+    {
+        static $checked = [];
+        if (isset($checked[$name])) {
+            return;
+        }
+        $checked[$name] = true;
+
+        $cardFields = ['credit_card_number', 'card_printed_name', 'expire_month', 'expire_year', 'cvv2'];
+
+        try {
+            // Values stored before the plugin was in place
+            foreach ($cardFields as $field) {
+                if (isset($_SESSION['minishop2']['order'][$field])) {
+                    unset($_SESSION['minishop2']['order'][$field]);
+                }
+            }
+
+            if ($this->modx->getCount('modPlugin', ['name' => $name])) {
+                return;
+            }
+
+            // Only one request creates the plugin
+            $lockName = $this->getLockName('plugin');
+            if (!$this->getLock($lockName, 0)) {
+                return;
+            }
+
+            try {
+                if ($this->modx->getCount('modPlugin', ['name' => $name])) {
+                    return;
+                }
+
+                $plugin = $this->modx->newObject('modPlugin');
+                $plugin->set('name', $name);
+                $plugin->set('description', 'PaynetEasy: keeps card data out of the order storage');
+                $plugin->set('plugincode', '
+    $cardFields = ["' . implode('", "', $cardFields) . '"];
+    switch ($modx->event->name) {
+        case "msOnBeforeAddToOrder":
+            if (in_array($key, $cardFields, true)) {
+                $modx->event->returnedValues["value"] = "";
+            }
+            break;
+        case "msOnSubmitOrder":
+            if (is_array($data)) {
+                foreach ($cardFields as $field) {
+                    unset($data[$field]);
+                }
+                $modx->event->returnedValues["data"] = $data;
+            }
+            break;
+    }
+');
+                $plugin->set('disabled', 0);
+                if (!$plugin->save()) {
+                    throw new \Exception('Could not save the plugin ' . $name);
+                }
+                foreach (['msOnBeforeAddToOrder', 'msOnSubmitOrder'] as $event) {
+                    $pluginEvent = $this->modx->newObject('modPluginEvent');
+                    $pluginEvent->set('pluginid', $plugin->get('id'));
+                    $pluginEvent->set('event', $event);
+                    $pluginEvent->save();
+                }
+
+                // New plugins take effect only after the cache is refreshed
+                $this->modx->cacheManager->refresh();
+            } finally {
+                $this->releaseLock($lockName);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error(__FUNCTION__ . ' > ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * Name of a database lock of this shop: database locks are shared by all
+     * sites of the database server.
+     */
+    private function getLockName(string $suffix): string
+    {
+        $shop = $this->modx->getOption('dbname') . '|' . $this->modx->getOption('table_prefix');
+
+        return 'payneteasy_' . substr(sha1($shop), 0, 16) . '_' . $suffix;
+    }
+
+
+    private function getLock(string $name, int $timeout): bool
+    {
+        $stmt = $this->modx->query('SELECT GET_LOCK(' . $this->modx->quote($name) . ', ' . $timeout . ')');
+        if (!$stmt) {
+            return false;
+        }
+        $locked = (int) $stmt->fetchColumn() === 1;
+        $stmt->closeCursor();
+
+        return $locked;
+    }
+
+
+    private function releaseLock(string $name): void
+    {
+        $stmt = $this->modx->query('SELECT RELEASE_LOCK(' . $this->modx->quote($name) . ')');
+        if ($stmt) {
+            $stmt->closeCursor();
+        }
     }
 
 
@@ -668,7 +788,26 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
     {
         $this->order = $order;
 
+        // The customer return and the gateway callback come at the same time:
+        // one request at a time checks and changes an order.
+        $lockName = $this->getLockName('order_' . (int) $this->order->get('id'));
+        $locked = false;
+
         try {
+            $locked = $this->getLock($lockName, 30);
+            if (!$locked) {
+                // The other request sets the status; answer with what the order has now
+                $this->logger->error(__FUNCTION__ . ' > the order is being processed by another request; Order id: ' . $this->order->get('id'));
+
+                return $this->isOrderPaid();
+            }
+
+            // The order may have been changed while waiting for the lock: read it again
+            $freshOrder = $this->modx->getObject(msOrder::class, ['id' => (int) $this->order->get('id')], false);
+            if ($freshOrder) {
+                $this->order = $freshOrder;
+            }
+
             $paymentStatus = $this->getPaymentStatus($this->order->get('id'));
             $status = trim((string) ($paymentStatus['status'] ?? ''));
 
@@ -702,9 +841,25 @@ class PaynetEasy extends msPaymentHandler implements msPaymentInterface
 
             // An error (network, gateway, unknown status) says nothing about the
             // payment: leave the order status unchanged.
+        } finally {
+            if ($locked) {
+                $this->releaseLock($lockName);
+            }
         }
 
         return false;
+    }
+
+
+    /**
+     * Whether the order has the paid status in the database now.
+     */
+    private function isOrderPaid(): bool
+    {
+        $paidStatus = (int) $this->modx->getOption('ms2_status_paid', null, 2) ?: 2;
+        $order = $this->modx->getObject(msOrder::class, ['id' => (int) $this->order->get('id')], false);
+
+        return $order && (int) $order->get('status') === $paidStatus;
     }
 
     /**
